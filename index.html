@@ -173,7 +173,7 @@
                 <p class="text-sky-800 font-bold text-sm">NILAI AKHIR</p>
                 <p id="result-nilai" class="text-5xl font-extrabold text-sky-600">100</p>
             </div>
-            <button class="btn interactive" onclick="location.reload()">MAIN LAGI</button>
+            <button class="btn interactive" onclick="ulangGame()">MAIN LAGI</button>
         </div>
     </div>
 
@@ -220,6 +220,14 @@
         }
         initCamera();
 
+        // === FUNGSI ACAK SOAL (Fisher-Yates Shuffle) ===
+        function acakArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
         // === DATABASE SOAL (20 SOAL TOTAL) ===
         const questions = [
             // 1-10: SOAL AWAL (Reguler IKTP 1.2.1)
@@ -234,19 +242,19 @@
             { type: "single", question: "Membagikan formulir daring (online) untuk mengetahui tingkat kepuasan wisatawan merupakan teknik...", options: [{text: "Wawancara", correct: false}, {text: "Observasi", correct: false}, {text: "Pengukuran", correct: false}, {text: "Angket", correct: true}, {text: "Dokumentasi", correct: false}], explanation: "Angket (Kuesioner) memungkinkan pengumpulan pendapat tertulis dari responden dalam jumlah besar." },
             { type: "multiple", max: 2, question: "Berdasarkan jenisnya, data dibagi menjadi Kuantitatif (angka) dan Kualitatif (kategori). Manakah contoh data Kualitatif? (PILIH 2)", options: [{text: "Jenis Ikan", correct: true}, {text: "Berat 40kg", correct: false}, {text: "Harga Rp30rb", correct: false}, {text: "Kesan Pantai", correct: true}, {text: "Suhu 32°C", correct: false}], explanation: "Data kualitatif berupa kategori, uraian, atau pendapat (misal jenis ikan tongkol, kesan pantai bersih)." },
 
-            // 11-15: 5 SOAL BENAR-SALAH DENGAN 3 PERNYATAAN (Menggunakan metode Kombinasi)
-            { type: "single", question: "Cermati 3 pernyataan ini:<br>1. Data lengkap artinya tidak ada kolom yang kosong.<br>2. Data akurat harus selalu menggunakan angka.<br>3. Data terkini berarti data tersebut belum usang.<br><br>Manakah pernyataan yang BENAR?", options: [{text: "1 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "2 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 2 SALAH karena data akurat tidak harus berupa angka (bisa juga data kualitatif yang sesuai fakta)." },
-            { type: "single", question: "Perhatikan 3 pernyataan mengenai SUMBER DATA:<br>1. Wawancara nelayan menghasilkan data primer.<br>2. Laporan desa adalah contoh data sekunder.<br>3. Data primer didapatkan dari tulisan/penelitian orang lain.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 3", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang didapat dari tulisan/penelitian orang lain disebut data sekunder." },
-            { type: "single", question: "Evaluasi 3 pernyataan TEKNIK PENGUMPULAN ini:<br>1. Angket cocok untuk mengukur suhu air laut.<br>2. Observasi dilakukan dengan mengamati langsung.<br>3. Menimbang berat ikan termasuk teknik pengukuran.<br><br>Manakah yang BENAR?", options: [{text: "2 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 1 SALAH karena suhu air laut harus menggunakan teknik PENGUKURAN (termometer), bukan angket (kuesioner)." },
-            { type: "single", question: "Cermati 3 pernyataan tentang JENIS DATA berikut:<br>1. 'Harga ikan Rp30.000' adalah data kuantitatif.<br>2. 'Pantai ini kotor' adalah data kualitatif.<br>3. Data kualitatif selalu dapat dihitung dengan kalkulator.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "2 dan 3", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 3 SALAH karena data kualitatif (seperti teks/pendapat) tidak dapat dihitung matematis dengan kalkulator." },
-            { type: "single", question: "Perhatikan 3 pernyataan KUALITAS DATA ini:<br>1. Relevan artinya data sesuai dengan tujuan awal.<br>2. Konsisten artinya format dan satuan ditulis seragam.<br>3. Data kotor karena salah ketik masih bisa disebut akurat.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 1", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang kotor akibat salah ketik (typo) jelas membuat data tersebut menjadi tidak akurat." },
+            // 11-15: 5 SOAL BENAR-SALAH DENGAN 3 PERNYATAAN 
+            { type: "single", question: "Cermati 3 pernyataan ini:<br>1. Data lengkap artinya tidak ada kolom kosong.<br>2. Data akurat harus selalu angka.<br>3. Data terkini berarti belum usang.<br><br>Manakah pernyataan yang BENAR?", options: [{text: "1 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "2 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 2 SALAH karena data akurat tidak harus berupa angka (bisa juga kualitatif yang sesuai fakta)." },
+            { type: "single", question: "Perhatikan 3 pernyataan SUMBER DATA:<br>1. Wawancara nelayan menghasilkan data primer.<br>2. Laporan desa adalah data sekunder.<br>3. Data primer didapat dari tulisan orang lain.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 3", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang didapat dari tulisan/penelitian orang lain disebut data sekunder." },
+            { type: "single", question: "Evaluasi 3 pernyataan TEKNIK PENGUMPULAN ini:<br>1. Angket cocok mengukur suhu air laut.<br>2. Observasi dilakukan dengan mengamati langsung.<br>3. Menimbang ikan termasuk pengukuran.<br><br>Manakah yang BENAR?", options: [{text: "2 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 1 SALAH karena suhu air laut harus menggunakan teknik PENGUKURAN (termometer), bukan angket." },
+            { type: "single", question: "Cermati 3 pernyataan JENIS DATA berikut:<br>1. 'Harga Rp30.000' = data kuantitatif.<br>2. 'Pantai kotor' = data kualitatif.<br>3. Data kualitatif selalu dapat dihitung kalkulator.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "2 dan 3", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 3 SALAH karena data kualitatif (seperti pendapat) tidak dapat dihitung matematis dengan kalkulator." },
+            { type: "single", question: "Perhatikan 3 pernyataan KUALITAS DATA ini:<br>1. Relevan = data sesuai tujuan awal.<br>2. Konsisten = format ditulis seragam.<br>3. Data salah ketik masih bisa disebut akurat.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 1", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang kotor akibat salah ketik (typo) jelas menjadi tidak akurat." },
 
             // 16-20: 5 SOAL MULTIPLE JAWABAN (Maksimal 3)
-            { type: "multiple", max: 3, question: "Di antara pilihan berikut, manakah yang termasuk ke dalam ciri-ciri Data Berkualitas? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Akurat", correct: true}, {text: "Subjektif", correct: false}, {text: "Relevan", correct: true}, {text: "Anonim", correct: false}, {text: "Terkini", correct: true}], explanation: "Data berkualitas memiliki 5 ciri: Akurat, Lengkap, Konsisten, Relevan, dan Terkini." },
-            { type: "multiple", max: 3, question: "Manakah dari pilihan di bawah ini yang merupakan sumber DATA SEKUNDER bagi seorang siswa? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Laporan BPS", correct: true}, {text: "Wawancara Kades", correct: false}, {text: "Arsip Kelurahan", correct: true}, {text: "Buku Koperasi", correct: true}, {text: "Observasi Kelas", correct: false}], explanation: "Data sekunder adalah data yang sudah tercatat dan dipublikasikan sebelumnya oleh pihak lain, seperti Laporan, Arsip, dan Buku Catatan yang sudah ada." },
-            { type: "multiple", max: 3, question: "Metode atau teknik apa saja yang umum digunakan untuk mengumpulkan data mentah oleh manusia? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Wawancara", correct: true}, {text: "Manipulasi", correct: false}, {text: "Observasi", correct: true}, {text: "Menghapus", correct: false}, {text: "Angket", correct: true}], explanation: "Teknik pengumpulan data yang benar adalah Observasi, Wawancara, Angket, Dokumentasi, dan Pengukuran." },
-            { type: "multiple", max: 3, question: "Manakah kondisi yang menyebabkan sebuah data menjadi 'KOTOR' (tidak valid)? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Ada Kolom Kosong", correct: true}, {text: "Salah Ketik Nama", correct: true}, {text: "Format Seragam", correct: false}, {text: "Data Konsisten", correct: false}, {text: "Nilai Minus (-15kg)", correct: true}], explanation: "Data kotor (tidak valid) terjadi akibat adanya duplikasi, data kosong, salah ketik, format yang tidak seragam, dan nilai yang tidak wajar (seperti minus pada berat ikan)." },
-            { type: "multiple", max: 3, question: "Berdasarkan catatan nelayan, manakah yang termasuk ke dalam Data KUANTITATIF? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Berat 40 Kg", correct: true}, {text: "Cuaca Cerah", correct: false}, {text: "Harga Rp50rb", correct: true}, {text: "Perahu Biru", correct: false}, {text: "150 Ekor Ikan", correct: true}], explanation: "Data kuantitatif adalah data yang direpresentasikan dalam wujud angka dan besaran ukur yang pasti (Berat, Harga, dan Jumlah)." }
+            { type: "multiple", max: 3, question: "Di antara pilihan berikut, manakah yang termasuk ke dalam ciri-ciri Data Berkualitas? (PILIH MAKSIMAL 3)", options: [{text: "Akurat", correct: true}, {text: "Subjektif", correct: false}, {text: "Relevan", correct: true}, {text: "Anonim", correct: false}, {text: "Terkini", correct: true}], explanation: "Data berkualitas memiliki 5 ciri: Akurat, Lengkap, Konsisten, Relevan, dan Terkini." },
+            { type: "multiple", max: 3, question: "Manakah dari pilihan di bawah ini yang merupakan sumber DATA SEKUNDER bagi seorang siswa? (PILIH MAKSIMAL 3)", options: [{text: "Laporan BPS", correct: true}, {text: "Wawancara Kades", correct: false}, {text: "Arsip Desa", correct: true}, {text: "Buku Koperasi", correct: true}, {text: "Observasi Kelas", correct: false}], explanation: "Data sekunder adalah data yang sudah tercatat dan dipublikasikan sebelumnya, seperti Laporan, Arsip, dan Buku Catatan." },
+            { type: "multiple", max: 3, question: "Metode atau teknik apa saja yang umum digunakan untuk mengumpulkan data mentah? (PILIH MAKSIMAL 3)", options: [{text: "Wawancara", correct: true}, {text: "Manipulasi", correct: false}, {text: "Observasi", correct: true}, {text: "Menghapus", correct: false}, {text: "Angket", correct: true}], explanation: "Teknik pengumpulan data yang benar adalah Observasi, Wawancara, Angket, Dokumentasi, dan Pengukuran." },
+            { type: "multiple", max: 3, question: "Manakah kondisi yang menyebabkan sebuah data menjadi 'KOTOR' (tidak valid)? (PILIH MAKSIMAL 3)", options: [{text: "Ada Kolom Kosong", correct: true}, {text: "Salah Ketik Nama", correct: true}, {text: "Format Seragam", correct: false}, {text: "Data Konsisten", correct: false}, {text: "Nilai Minus (-15kg)", correct: true}], explanation: "Data kotor terjadi akibat adanya duplikasi, data kosong, salah ketik, format tidak seragam, dan nilai tidak wajar." },
+            { type: "multiple", max: 3, question: "Berdasarkan catatan nelayan, manakah yang termasuk ke dalam Data KUANTITATIF? (PILIH MAKSIMAL 3)", options: [{text: "Berat 40 Kg", correct: true}, {text: "Cuaca Cerah", correct: false}, {text: "Harga Rp50rb", correct: true}, {text: "Perahu Biru", correct: false}, {text: "150 Ekor Ikan", correct: true}], explanation: "Data kuantitatif adalah data yang direpresentasikan dalam wujud angka/besaran (Berat, Harga, dan Jumlah)." }
         ];
 
         let currentQuestion = 0, score = 0, benar = 0, salah = 0, playerName = "", isAnswering = false, selectedBoxes = [];
@@ -256,8 +264,24 @@
             document.getElementById('screen-start').classList.add('hidden');
             document.getElementById('soal-panel').classList.remove('hidden');
             
+            // ACAK URUTAN SOAL SEBELUM MULAI
+            acakArray(questions);
+            
             currentQuestion = 0; score = 0; benar = 0; salah = 0;
             tampilkanSoal();
+        }
+
+        // FUNGSI UNTUK MERESET GAME TANPA RELOAD PAGE
+        function ulangGame() {
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-start').classList.remove('hidden');
+            document.getElementById('input-nama').value = ""; // Kosongkan nama
+            
+            // Tampilkan kembali kursor hologram di layar awal
+            if (window.innerWidth >= 768) {
+                const cursor = document.getElementById('custom-cursor');
+                if(cursor) cursor.style.display = 'block';
+            }
         }
 
         function tampilkanSoal() {
@@ -267,7 +291,6 @@
             document.getElementById('screen-feedback').classList.add('hidden');
             
             const q = questions[currentQuestion];
-            // Render HTML inner agar tag <br> terbaca
             document.getElementById('question-text').innerHTML = q.question;
             document.getElementById('quiz-progress').innerText = `Soal ${currentQuestion + 1} / 20`;
             document.getElementById('quiz-score').innerText = `Skor: ${Math.round(score)}`;
@@ -277,7 +300,7 @@
                 instruksi.innerText = `TANGKAP MAKSIMAL ${q.max} KUPU-KUPU`;
                 instruksi.className = "font-extrabold text-orange-500 animate-pulse text-xs md:text-sm";
             } else {
-                instruksi.innerText = `TANGKAP 1 KUPU-KUPU`;
+                instruksi.innerText = `TANGKAP 1 JAWABAN`;
                 instruksi.className = "font-extrabold text-red-600 animate-pulse text-xs md:text-sm";
             }
 
@@ -285,7 +308,10 @@
             container.innerHTML = "";
             
             const leftPositions = [2, 22, 42, 62, 82]; 
-            const shuffledOptions = q.options.sort(() => Math.random() - 0.5);
+            
+            // ACAK POSISI JAWABAN (KUPU-KUPU) SETIAP KALI MUNCUL
+            const shuffledOptions = [...q.options];
+            acakArray(shuffledOptions);
 
             shuffledOptions.forEach((opt, index) => {
                 const butterfly = document.createElement('div');
@@ -297,7 +323,6 @@
                 `;
                 
                 butterfly.style.left = `${leftPositions[index]}%`; 
-                // Kupu-kupu dibuat sedikit lebih lambat di soal teks panjang agar sempat dibaca
                 const baseSpeed = q.question.length > 100 ? 10 : 7;
                 butterfly.style.animationDuration = `${Math.random() * 4 + baseSpeed}s`; 
                 butterfly.style.animationDelay = `${index * 0.6}s`;
