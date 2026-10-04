@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game AR: Tangkap Kupu-Kupu Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+        
+        body { font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; background-color: #111; cursor: none; }
+        
+        /* KURSOR TARGET */
+        #custom-cursor {
+            position: fixed; top: 50%; left: 50%; width: 60px; height: 60px;
+            border: 4px dashed rgba(56, 189, 248, 0.9); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 99999;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.8), inset 0 0 15px rgba(14, 165, 233, 0.5);
+            transition: transform 0.05s ease-out; animation: spinCursor 10s linear infinite;
+        }
+        @keyframes spinCursor { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        
+        #custom-cursor::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 12px; height: 12px; background: #ef4444; border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: 0 0 15px #ef4444;
+        }
+        .cursor-click { transform: translate(-50%, -50%) scale(0.7) !important; border-color: #10b981 !important; }
+
+        #webcam-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 1; transform: scaleX(-1);
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none;
+        }
+        
+        .interactive { pointer-events: auto; cursor: none; }
+        .hidden { display: none !important; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(8px); 
+            border: 2px solid rgba(56, 189, 248, 0.9); border-radius: 25px;
+            width: 90%; max-width: 700px; padding: 30px; text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3); color: #0f172a;
+        }
+
+        #soal-panel {
+            position: absolute; top: 2%; width: 95%; max-width: 1000px;
+            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(8px);
+            border-radius: 20px; padding: 15px 25px;
+            border-bottom: 6px solid #0ea5e9; box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; 
+            padding: 15px 30px; border-radius: 15px; font-size: 1.1rem; font-weight: bold; 
+            width: 100%; cursor: none; transition: 0.2s; border: none;
+            box-shadow: 0 5px 15px rgba(14, 165, 233, 0.4); pointer-events: auto;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        #falling-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5; pointer-events: none; overflow: hidden;
+        }
+
+        /* DESAIN KUPU-KUPU 3D */
+        .falling-butterfly {
+            position: absolute; pointer-events: auto; cursor: none;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(4px);
+            color: #0f172a; font-weight: 800; font-size: 0.9rem;
+            padding: 10px 15px; border-radius: 30px; text-align: center;
+            width: 18%; max-width: 160px; 
+            border: 3px solid #38bdf8;
+            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.4);
+            animation: fallAnimation linear infinite, flutter 2.5s ease-in-out infinite alternate;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        
+        /* Ikon Kupu-kupu di atas teks */
+        .falling-butterfly::before {
+            content: '🦋'; font-size: 2.5rem; margin-bottom: 5px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+            animation: wings 0.3s infinite alternate;
+        }
+        
+        .falling-butterfly.selected {
+            background: #fef3c7 !important; border: 3px solid #f59e0b;
+            transform: scale(1.15) !important; z-index: 20;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.8);
+            animation: none !important; /* Berhenti berayun saat ditangkap */
+        }
+
+        @keyframes fallAnimation { 0% { top: -150px; } 100% { top: 110%; } }
+        
+        /* Animasi Kupu-kupu Berayun Kiri-Kanan */
+        @keyframes flutter {
+            0% { margin-left: -20px; transform: rotate(-5deg); }
+            100% { margin-left: 20px; transform: rotate(5deg); }
+        }
+        
+        /* Animasi Kepakan Sayap */
+        @keyframes wings {
+            0% { transform: scaleX(1); }
+            100% { transform: scaleX(0.6); }
+        }
+
+        #btn-submit-multiple {
+            position: absolute; bottom: 8%; z-index: 25; width: 50%; max-width: 350px;
+            background: #10b981; font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="custom-cursor"></div>
+    <video id="webcam-bg" autoplay playsinline muted></video>
+    <div id="falling-container"></div>
+
+    <div id="ui-layer">
+        
+        <div id="screen-start" class="glass-panel interactive">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-800 mb-2">Taman Data Kupu-Kupu</h1>
+            <p class="text-gray-800 font-bold mb-6">Arahkan target dan tangkap kupu-kupu pembawa jawaban yang benar!</p>
+            <input type="text" id="input-nama" class="w-full px-4 py-3 border-2 border-sky-400 rounded-xl mb-4 text-center text-lg focus:outline-none interactive" placeholder="Ketik Nama Siswa...">
+            <button class="btn" onclick="mulaiGame()">MULAI BERBURU</button>
+        </div>
+
+        <div id="soal-panel" class="hidden interactive">
+            <div class="flex justify-between items-center mb-2 border-b-2 border-sky-300 pb-2">
+                <span id="quiz-progress" class="font-bold text-sky-900 bg-sky-200 px-3 py-1 rounded-full text-sm">Soal 1/10</span>
+                <span id="quiz-instruksi" class="font-extrabold text-red-600 animate-pulse text-sm md:text-base">TANGKAP 1 JAWABAN</span>
+                <span id="quiz-score" class="font-bold text-gray-800 bg-white/70 px-3 py-1 rounded-full text-sm">Skor: 0</span>
+            </div>
+            <h2 id="question-text" class="text-base md:text-xl font-extrabold text-gray-900 drop-shadow-sm">Memuat soal...</h2>
+        </div>
+
+        <button id="btn-submit-multiple" class="btn hidden interactive" onclick="submitMultiAnswer()">CEK JAWABAN</button>
+
+        <div id="screen-feedback" class="glass-panel hidden interactive bg-white/95">
+            <h1 id="fb-title" class="text-3xl font-extrabold mb-2">BENAR!</h1>
+            <div class="bg-gray-100 p-3 rounded-xl mb-4 border border-gray-300 text-left">
+                <p class="text-xs font-bold text-gray-500 mb-1">Jawaban Benar:</p>
+                <p id="fb-correct-ans" class="font-bold text-sky-700 mb-2 text-sm">[Jawaban]</p>
+                <p class="text-xs font-bold text-gray-500 mb-1">Penjelasan:</p>
+                <p id="fb-explanation" class="text-sm text-gray-800 leading-tight">[Penjelasan]</p>
+            </div>
+            <button class="btn" onclick="soalSelanjutnya()">LANJUT BERBURU</button>
+        </div>
+
+        <div id="screen-result" class="glass-panel hidden interactive bg-white/95">
+            <h1 class="text-4xl font-extrabold text-sky-700 mb-2">Perburuan Selesai!</h1>
+            <p class="text-xl font-bold text-gray-700 mb-4">Kerja Bagus, <span id="result-name">Siswa</span>!</p>
+            
+            <div class="flex justify-around mb-4 mt-2">
+                <div class="bg-green-100 p-3 rounded-xl w-5/12 border-2 border-green-400">
+                    <p class="text-green-800 font-bold text-sm">Benar</p>
+                    <p id="result-benar" class="text-3xl font-extrabold text-green-600">0</p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-xl w-5/12 border-2 border-red-400">
+                    <p class="text-red-800 font-bold text-sm">Salah</p>
+                    <p id="result-salah" class="text-3xl font-extrabold text-red-600">0</p>
+                </div>
+            </div>
+            
+            <div class="bg-sky-100 border-4 border-sky-400 p-3 rounded-2xl mb-4 shadow-inner">
+                <p class="text-sky-800 font-bold text-sm">NILAI AKHIR</p>
+                <p id="result-nilai" class="text-5xl font-extrabold text-sky-600">100</p>
+            </div>
+            <button class="btn" onclick="location.reload()">MAIN LAGI</button>
+        </div>
+    </div>
+
+    <script>
+        // KURSOR KUSTOM
+        const customCursor = document.getElementById('custom-cursor');
+        document.addEventListener('mousemove', (e) => {
+            customCursor.style.left = e.clientX + 'px';
+            customCursor.style.top = e.clientY + 'px';
+        });
+        document.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            customCursor.style.Berikut adalah kode game AR HUD dengan pembaruan sesuai materi IKTP 1.2.1. Balok yang jatuh telah digantikan oleh animasi kupu-kupu 3D (dibuat menggunakan CSS 3D *transforms* agar kepakan sayapnya mulus namun teks tetap tajam) yang melayang turun secara perlahan. Sepuluh soal di dalamnya secara spesifik menguji pemahaman tentang ciri data berkualitas, jenis data, sumber primer/sekunder, serta teknik pengumpulan data.
+
+Simpan kode di bawah ini sebagai file `.html` (misalnya `ar-kupu-kupu.html`) dan jalankan melalui *browser* Anda:
+
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kuis AR: Tangkap Kupu-Kupu Data</title>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <style>
+        @import url('[https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap](https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap)');
+        
+        body { font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; background-color: #111; cursor: none; }
+        
+        /* Kursor Hologram (Target) */
+        #custom-cursor {
+            position: fixed; top: 50%; left: 50%; width: 60px; height: 60px;
+            border: 4px solid rgba(56, 189, 248, 0.9); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 99999;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.8), inset 0 0 15px rgba(14, 165, 233, 0.5);
+            transition: transform 0.05s ease-out;
+        }
+        #custom-cursor::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 12px; height: 12px; background: #ef4444; border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: 0 0 15px #ef4444;
+        }
+        .cursor-click { transform: translate(-50%, -50%) scale(0.7) !important; border-color: #10b981 !important; }
+
+        /* Video Kamera Latar */
+        #webcam-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 1; transform: scaleX(-1);
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none;
+        }
+        
+        .interactive { pointer-events: auto; cursor: none; }
+        .hidden { display: none !important; }
+
+        /* Panel UI */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(8px); 
+            border: 2px solid rgba(56, 189, 248, 0.8); border-radius: 20px;
+            width: 90%; max-width: 700px; padding: 30px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); color: #0f172a;
+        }
+
+        #soal-panel {
+            position: absolute; top: 2%; width: 95%; max-width: 1000px;
+            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(8px);
+            border-radius: 15px; padding: 15px 25px;
+            border-bottom: 5px solid #0ea5e9; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .btn {
+            background: #0ea5e9; color: white; padding: 15px 30px; border-radius: 12px;
+            font-size: 1.1rem; font-weight: bold; width: 100%; cursor: none; transition: 0.2s;
+            border: 2px solid #0284c7; box-shadow: 0 5px 15px rgba(0,0,0,0.2); pointer-events: auto;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-secondary { background: #64748b; border-color: #475569; margin-top: 10px; }
+
+        /* Wadah Animasi Jatuh */
+        #falling-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5; pointer-events: none; overflow: hidden;
+        }
+
+        /* --- DESAIN KUPU-KUPU 3D CSS --- */
+        .butterfly-container {
+            position: absolute; pointer-events: auto; cursor: none;
+            display: flex; flex-direction: column; align-items: center;
+            width: 18%; max-width: 160px;
+            animation: fallAnimation linear infinite;
+            transition: transform 0.2s;
+        }
+
+        .butterfly {
+            width: 70px; height: 50px; position: relative;
+            perspective: 600px; transform-style: preserve-3d;
+            margin-bottom: 12px;
+        }
+
+        .wing {
+            position: absolute; width: 35px; height: 50px; top: 0;
+            background: radial-gradient(circle, #38bdf8, #0284c7);
+            border: 2px solid #e0f2fe; box-shadow: 0 0 15px rgba(56,189,248,0.8);
+            opacity: 0.9;
+        }
+        
+        .wing-left {
+            left: 0; border-radius: 50% 15% 50% 50%;
+            transform-origin: right center;
+            animation: flap-left 0.12s ease-in-out infinite alternate;
+        }
+        
+        .wing-right {
+            right: 0; border-radius: 15% 50% 50% 50%;
+            transform-origin: left center;
+            animation: flap-right 0.12s ease-in-out infinite alternate;
+        }
+        
+        .butterfly-body {
+            position: absolute; width: 6px; height: 35px;
+            background: #1e293b; border-radius: 10px;
+            left: 32px; top: 7px; z-index: 10;
+        }
+
+        @keyframes flap-left { 0% { transform: rotateY(10deg); } 100% { transform: rotateY(70deg); } }
+        @keyframes flap-right { 0% { transform: rotateY(-10deg); } 100% { transform: rotateY(-70deg); } }
+
+        /* Kotak Jawaban di bawah kupu-kupu */
+        .answer-box {
+            background: rgba(15, 23, 42, 0.85); color: white;
+            font-weight: 700; font-size: 0.9rem; padding: 12px;
+            border-radius: 12px; text-align: center; width: 100%;
+            border: 2px solid rgba(56, 189, 248, 0.8);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Saat Kupu-kupu Tertangkap (Berubah Emas & Berhenti Mengepak) */
+        .butterfly-container.selected .answer-box {
+            background: #f59e0b; border-color: #fef3c7; box-shadow: 0 0 25px rgba(245, 158, 11, 0.8);
+        }
+        .butterfly-container.selected .wing {
+            background: radial-gradient(circle, #fcd34d, #f59e0b); animation: none; border-color: #fff;
+        }
+        .butterfly-container.selected .wing-left { transform: rotateY(30deg); }
+        .butterfly-container.selected .wing-right { transform: rotateY(-30deg); }
+        .butterfly-container.selected { transform: scale(1.15); z-index: 20; }
+
+        @keyframes fallAnimation { 0% { top: -200px; } 100% { top: 110%; } }
+
+        #btn-submit-multiple {
+            position: absolute; bottom: 8%; z-index: 25; width: 50%; max-width: 350px;
+            background: #10b981; border-color: #047857; font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- KURSOR -->
+    <div id="custom-cursor"></div>
+
+    <!-- KAMERA -->
+    <video id="webcam-bg" autoplay playsinline muted></video>
+
+    <!-- WADAH KUPU-KUPU -->
+    <div id="falling-container"></div>
+
+    <div id="ui-layer">
+        
+        <!-- LAYAR MULAI -->
+        <div id="screen-start" class="glass-panel interactive">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-900 mb-2">Misi Kualitas Data (IKTP 1.2.1)</h1>
+            <p class="text-gray-900 font-bold mb-6">Arahkan target dan tangkap kupu-kupu pembawa jawaban yang tepat!</p>
+            <input type="text" id="input-nama" class="w-full px-4 py-3 border-2 border-sky-400 rounded-xl mb-4 text-center text-lg focus:outline-none interactive" placeholder="Ketik Nama Siswa...">
+            <button class="btn" onclick="mulaiGame()">MULAI TANTANGAN</button>
+            <button id="btn-switch-cam" class="btn btn-secondary hidden" onclick="switchCamera()">🔄 GANTI KAMERA</button>
+        </div>
+
+        <!-- PANEL SOAL -->
+        <div id="soal-panel" class="hidden interactive">
+            <div class="flex justify-between items-center mb-2 border-b-2 border-sky-400 pb-2">
+                <span id="quiz-progress" class="font-bold text-sky-900 bg-sky-200 px-3 py-1 rounded-full text-sm">Soal 1/10</span>
+                <span id="quiz-instruksi" class="font-extrabold text-red-600 animate-pulse text-sm md:text-base">TANGKAP 1 JAWABAN</span>
+                <span id="quiz-score" class="font-bold text-gray-900 bg-white/80 px-3 py-1 rounded-full text-sm">Skor: 0</span>
+            </div>
+            <h2 id="question-text" class="text-base md:text-xl font-extrabold text-gray-900 drop-shadow-md">Memuat soal...</h2>
+        </div>
+
+        <button id="btn-submit-multiple" class="btn hidden interactive" onclick="submitMultiAnswer()">CEK JAWABAN</button>
+
+        <!-- PANEL PEMBAHASAN -->
+        <div id="screen-feedback" class="glass-panel hidden interactive bg-white/95">
+            <h1 id="fb-title" class="text-3xl font-extrabold mb-2">BENAR!</h1>
+            <div class="bg-gray-100 p-4 rounded-xl mb-4 border border-gray-300 text-left">
+                <p class="text-xs font-bold text-gray-500 mb-1">Jawaban Benar:</p>
+                <p id="fb-correct-ans" class="font-bold text-sky-700 mb-3 text-sm md:text-base">[Jawaban]</p>
+                <p class="text-xs font-bold text-gray-500 mb-1">Penjelasan (Berdasarkan Bahan Ajar):</p>
+                <p id="fb-explanation" class="text-sm md:text-base text-gray-800 leading-snug">[Penjelasan]</p>
+            </div>
+            <button class="btn" onclick="soalSelanjutnya()">LANJUT SOAL BERIKUTNYA</button>
+        </div>
+
+        <!-- LAYAR HASIL -->
+        <div id="screen-result" class="glass-panel hidden interactive bg-white/95">
+            <h1 class="text-4xl font-extrabold text-sky-800 mb-2">Misi Selesai!</h1>
+            <p class="text-xl font-bold text-gray-800 mb-4">Hebat, <span id="result-name">Siswa</span>!</p>
+            
+            <div class="flex justify-around mb-5 mt-2">
+                <div class="bg-green-100 p-4 rounded-xl w-5/12 border-2 border-green-500">
+                    <p class="text-green-800 font-bold text-sm">Benar</p>
+                    <p id="result-benar" class="text-4xl font-extrabold text-green-600">0</p>
+                </div>
+                <div class="bg-red-100 p-4 rounded-xl w-5/12 border-2 border-red-500">
+                    <p class="text-red-800 font-bold text-sm">Salah</p>
+                    <p id="result-salah" class="text-4xl font-extrabold text-red-600">0</p>
+                </div>
+            </div>
+            
+            <div class="bg-sky-100 border-4 border-sky-500 p-4 rounded-2xl mb-5 shadow-inner">
+                <p class="text-sky-800 font-bold text-sm">NILAI AKHIR (IKTP 1.2.1)</p>
+                <p id="result-nilai" class="text-6xl font-extrabold text-sky-600">100</p>
+            </div>
+            <button class="btn" onclick="location.reload()">MAIN LAGI</button>
+        </div>
+    </div>
+
+    <script>
+        // === LOGIKA KURSOR HOLOGRAFIK ===
+        const customCursor = document.getElementById('custom-cursor');
+        document.addEventListener('mousemove', (e) => {
+            customCursor.style.left = e.clientX + 'px'; customCursor.style.top = e.clientY + 'px';
+        });
+        document.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            customCursor.style.left = touch.clientX +
