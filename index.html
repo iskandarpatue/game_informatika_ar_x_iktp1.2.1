@@ -57,8 +57,8 @@
         }
 
         #soal-panel {
-            position: absolute; top: 2%; width: 95%; max-width: 900px;
-            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(8px);
+            position: absolute; top: 2%; width: 95%; max-width: 950px;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px);
             border-radius: 15px; padding: 15px 25px;
             border-bottom: 5px solid #0ea5e9; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             text-align: center;
@@ -85,13 +85,12 @@
             animation: fallAnimation linear infinite;
             transition: transform 0.2s;
         }
-        /* Efek sayap kupu-kupu bergerak (Flutter) */
         .butterfly-icon {
             font-size: 3rem; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.4));
             animation: flutter 2s ease-in-out infinite alternate;
         }
         .butterfly-text {
-            background: rgba(255,255,255,0.9); color: #0f172a;
+            background: rgba(255,255,255,0.95); color: #0f172a;
             font-weight: 800; font-size: 0.85rem; padding: 5px 10px;
             border-radius: 10px; border: 2px solid #0ea5e9;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -108,7 +107,7 @@
         }
 
         #btn-submit-multiple {
-            position: absolute; bottom: 8%; z-index: 25; width: 50%; max-width: 350px;
+            position: absolute; bottom: 5%; z-index: 25; width: 50%; max-width: 350px;
             background: #10b981; border-color: #047857; font-size: 1.2rem;
         }
     </style>
@@ -124,7 +123,7 @@
         <!-- Layar Mulai -->
         <div id="screen-start" class="glass-panel interactive">
             <h1 class="text-3xl font-extrabold text-sky-800 mb-2">Taman Data: Kupu-Kupu</h1>
-            <p class="text-gray-800 font-bold mb-6">Materi: Kualitas & Pengumpulan Data. Tangkap kupu-kupu jawaban yang benar!</p>
+            <p class="text-gray-800 font-bold mb-6">Materi: Kualitas & Pengumpulan Data. Tangkap jawaban yang benar di udara!</p>
             <input type="text" id="input-nama" class="w-full px-4 py-3 border-2 border-sky-400 rounded-xl mb-4 text-center text-lg focus:outline-none interactive" placeholder="Ketik Nama Siswa...">
             <button class="btn interactive" onclick="mulaiGame()">MULAI TANTANGAN</button>
             <button id="btn-switch-cam" class="btn btn-secondary hidden interactive" onclick="switchCamera()">🔄 GANTI KAMERA (DEPAN/BELAKANG)</button>
@@ -133,7 +132,7 @@
         <!-- Panel Soal -->
         <div id="soal-panel" class="hidden interactive">
             <div class="flex justify-between items-center mb-2 border-b-2 border-sky-300 pb-2">
-                <span id="quiz-progress" class="font-bold text-sky-900 bg-sky-200 px-3 py-1 rounded-full text-xs md:text-sm">Soal 1/10</span>
+                <span id="quiz-progress" class="font-bold text-sky-900 bg-sky-200 px-3 py-1 rounded-full text-xs md:text-sm">Soal 1/20</span>
                 <span id="quiz-instruksi" class="font-extrabold text-red-600 animate-pulse text-xs md:text-sm">TANGKAP 1 JAWABAN</span>
                 <span id="quiz-score" class="font-bold text-gray-800 bg-white/70 px-3 py-1 rounded-full text-xs md:text-sm">Skor: 0</span>
             </div>
@@ -179,7 +178,7 @@
     </div>
 
     <script>
-        // === LOGIKA KURSOR KUSTOM (Hanya untuk Desktop) ===
+        // === LOGIKA KURSOR KUSTOM ===
         if (window.innerWidth >= 768) {
             const customCursor = document.getElementById('custom-cursor');
             document.addEventListener('mousemove', (e) => {
@@ -190,53 +189,64 @@
             document.addEventListener('mouseup', () => customCursor.classList.remove('cursor-click'));
         }
 
-        // === SISTEM MANAJEMEN KAMERA ===
+        // === SISTEM KAMERA ===
         let videoDevices = [];
         let currentDeviceIndex = 0;
         let currentStream = null;
 
         async function initCamera() {
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); // Default kamera belakang/utama
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 document.getElementById('webcam-bg').srcObject = currentStream;
-                
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 videoDevices = devices.filter(d => d.kind === 'videoinput');
-                
                 if (videoDevices.length > 1) {
                     document.getElementById('btn-switch-cam').classList.remove('hidden');
                 }
-            } catch (err) { console.warn("Kamera ditolak/error", err); }
+            } catch (err) { console.warn("Kamera error", err); }
         }
 
         async function switchCamera() {
             if (videoDevices.length < 2) return;
             currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
             const deviceId = videoDevices[currentDeviceIndex].deviceId;
-
-            if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); }
+            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
-                // Hapus mirror effect jika kamera bukan user/depan (opsional)
                 const isUserCam = videoDevices[currentDeviceIndex].label.toLowerCase().includes('front');
                 document.getElementById('webcam-bg').style.transform = isUserCam ? "scaleX(-1)" : "none";
                 document.getElementById('webcam-bg').srcObject = currentStream;
-            } catch (err) { console.error("Gagal ganti kamera", err); }
+            } catch (err) { console.error("Gagal ganti", err); }
         }
         initCamera();
 
-        // === DATABASE SOAL (10 SOAL IKTP 1.2.1) ===
+        // === DATABASE SOAL (20 SOAL TOTAL) ===
         const questions = [
-            { type: "single", question: "Ciri data berkualitas yang mensyaratkan data harus sesuai dengan keadaan sebenarnya, tanpa salah catat atau salah ukur adalah...", options: [{text: "Konsisten", correct: false}, {text: "Lengkap", correct: false}, {text: "Akurat", correct: true}, {text: "Terkini", correct: false}, {text: "Relevan", correct: false}], explanation: "Akurat berarti data yang dicatat benar-benar mencerminkan fakta di lapangan." },
+            // 1-10: SOAL AWAL (Reguler IKTP 1.2.1)
+            { type: "single", question: "Ciri data berkualitas yang mensyaratkan data harus sesuai dengan keadaan sebenarnya, tanpa salah catat adalah...", options: [{text: "Konsisten", correct: false}, {text: "Lengkap", correct: false}, {text: "Akurat", correct: true}, {text: "Terkini", correct: false}, {text: "Relevan", correct: false}], explanation: "Akurat berarti data yang dicatat benar-benar mencerminkan fakta di lapangan." },
             { type: "single", question: "Data nama, jenis ikan, berat, dan harga harus terisi semua tanpa ada kolom yang kosong. Hal ini memenuhi ciri data yang...", options: [{text: "Lengkap", correct: true}, {text: "Akurat", correct: false}, {text: "Relevan", correct: false}, {text: "Konsisten", correct: false}, {text: "Terkini", correct: false}], explanation: "Data yang lengkap berarti semua bagian data atau atribut penting telah terisi seluruhnya." },
             { type: "single", question: "Format penulisan, satuan, dan istilah yang seragam di seluruh data (misal semua tanggal ditulis hh/bb/tttt) mencerminkan ciri data...", options: [{text: "Terkini", correct: false}, {text: "Konsisten", correct: true}, {text: "Akurat", correct: false}, {text: "Relevan", correct: false}, {text: "Lengkap", correct: false}], explanation: "Konsistensi memastikan seluruh data mengikuti aturan atau format baku yang sama." },
             { type: "single", question: "Mencatat warna perahu padahal tujuan pengumpulan datanya adalah menghitung hasil tangkapan ikan akan melanggar ciri data...", options: [{text: "Akurat", correct: false}, {text: "Konsisten", correct: false}, {text: "Relevan", correct: true}, {text: "Lengkap", correct: false}, {text: "Terkini", correct: false}], explanation: "Relevan berarti informasi yang dikumpulkan berkaitan langsung dengan tujuan analisis yang dilakukan." },
-            { type: "single", question: "Menggunakan harga ikan tahun lalu untuk menentukan harga hari ini berarti data tersebut tidak memenuhi ciri...", options: [{text: "Terkini", correct: true}, {text: "Relevan", correct: false}, {text: "Konsisten", correct: false}, {text: "Akurat", correct: false}, {text: "Lengkap", correct: false}], explanation: "Data terkini adalah data yang tidak kedaluwarsa dan relevan dengan waktu pengambilan keputusan saat ini." },
-            { type: "single", question: "Menimbang ikan di dermaga atau mewawancarai nelayan secara langsung menghasilkan sumber data berupa...", options: [{text: "Data Sekunder", correct: false}, {text: "Data Kualitatif", correct: false}, {text: "Data Tersier", correct: false}, {text: "Data Primer", correct: true}, {text: "Data Abstrak", correct: false}], explanation: "Data primer adalah data yang dikumpulkan secara langsung oleh peneliti dari sumber pertama." },
+            { type: "single", question: "Menggunakan harga ikan tahun lalu untuk menentukan harga hari ini berarti data tersebut tidak memenuhi ciri...", options: [{text: "Terkini", correct: true}, {text: "Relevan", correct: false}, {text: "Konsisten", correct: false}, {text: "Akurat", correct: false}, {text: "Lengkap", correct: false}], explanation: "Data terkini adalah data yang tidak kedaluwarsa dan relevan dengan waktu saat ini." },
+            { type: "single", question: "Menimbang ikan di dermaga atau mewawancarai nelayan secara langsung menghasilkan sumber data berupa...", options: [{text: "Sekunder", correct: false}, {text: "Kualitatif", correct: false}, {text: "Tersier", correct: false}, {text: "Primer", correct: true}, {text: "Abstrak", correct: false}], explanation: "Data primer adalah data yang dikumpulkan secara langsung oleh peneliti dari sumber pertama." },
             { type: "single", question: "Laporan tahunan koperasi nelayan atau data statistik dari kantor desa merupakan contoh dari sumber data...", options: [{text: "Primer", correct: false}, {text: "Kuantitatif", correct: false}, {text: "Sekunder", correct: true}, {text: "Observasi", correct: false}, {text: "Angket", correct: false}], explanation: "Data sekunder merupakan data yang sudah dikumpulkan dan dipublikasikan oleh pihak/organisasi lain." },
             { type: "single", question: "Menanyakan langsung kepada ketua koperasi nelayan mengenai kendala penjualan ikan menggunakan teknik...", options: [{text: "Observasi", correct: false}, {text: "Wawancara", correct: true}, {text: "Angket", correct: false}, {text: "Dokumentasi", correct: false}, {text: "Pengukuran", correct: false}], explanation: "Wawancara adalah teknik mengumpulkan data melalui proses tanya jawab langsung dengan narasumber." },
             { type: "single", question: "Membagikan formulir daring (online) untuk mengetahui tingkat kepuasan wisatawan merupakan teknik...", options: [{text: "Wawancara", correct: false}, {text: "Observasi", correct: false}, {text: "Pengukuran", correct: false}, {text: "Angket", correct: true}, {text: "Dokumentasi", correct: false}], explanation: "Angket (Kuesioner) memungkinkan pengumpulan pendapat tertulis dari responden dalam jumlah besar." },
-            { type: "multiple", max: 2, question: "Berdasarkan jenisnya, data dibagi menjadi Kuantitatif (angka) dan Kualitatif (kategori). Manakah contoh data Kualitatif? (PILIH 2)", options: [{text: "Jenis Ikan", correct: true}, {text: "Berat 40kg", correct: false}, {text: "Harga Rp30.000", correct: false}, {text: "Kesan Pantai", correct: true}, {text: "Suhu 32°C", correct: false}], explanation: "Data kualitatif berupa kategori, uraian, atau pendapat (misal jenis ikan tongkol, kesan pantai bersih)." }
+            { type: "multiple", max: 2, question: "Berdasarkan jenisnya, data dibagi menjadi Kuantitatif (angka) dan Kualitatif (kategori). Manakah contoh data Kualitatif? (PILIH 2)", options: [{text: "Jenis Ikan", correct: true}, {text: "Berat 40kg", correct: false}, {text: "Harga Rp30rb", correct: false}, {text: "Kesan Pantai", correct: true}, {text: "Suhu 32°C", correct: false}], explanation: "Data kualitatif berupa kategori, uraian, atau pendapat (misal jenis ikan tongkol, kesan pantai bersih)." },
+
+            // 11-15: 5 SOAL BENAR-SALAH DENGAN 3 PERNYATAAN (Menggunakan metode Kombinasi)
+            { type: "single", question: "Cermati 3 pernyataan ini:<br>1. Data lengkap artinya tidak ada kolom yang kosong.<br>2. Data akurat harus selalu menggunakan angka.<br>3. Data terkini berarti data tersebut belum usang.<br><br>Manakah pernyataan yang BENAR?", options: [{text: "1 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "2 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 2 SALAH karena data akurat tidak harus berupa angka (bisa juga data kualitatif yang sesuai fakta)." },
+            { type: "single", question: "Perhatikan 3 pernyataan mengenai SUMBER DATA:<br>1. Wawancara nelayan menghasilkan data primer.<br>2. Laporan desa adalah contoh data sekunder.<br>3. Data primer didapatkan dari tulisan/penelitian orang lain.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 3", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang didapat dari tulisan/penelitian orang lain disebut data sekunder." },
+            { type: "single", question: "Evaluasi 3 pernyataan TEKNIK PENGUMPULAN ini:<br>1. Angket cocok untuk mengukur suhu air laut.<br>2. Observasi dilakukan dengan mengamati langsung.<br>3. Menimbang berat ikan termasuk teknik pengukuran.<br><br>Manakah yang BENAR?", options: [{text: "2 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 1 SALAH karena suhu air laut harus menggunakan teknik PENGUKURAN (termometer), bukan angket (kuesioner)." },
+            { type: "single", question: "Cermati 3 pernyataan tentang JENIS DATA berikut:<br>1. 'Harga ikan Rp30.000' adalah data kuantitatif.<br>2. 'Pantai ini kotor' adalah data kualitatif.<br>3. Data kualitatif selalu dapat dihitung dengan kalkulator.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "2 dan 3", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 3 SALAH karena data kualitatif (seperti teks/pendapat) tidak dapat dihitung matematis dengan kalkulator." },
+            { type: "single", question: "Perhatikan 3 pernyataan KUALITAS DATA ini:<br>1. Relevan artinya data sesuai dengan tujuan awal.<br>2. Konsisten artinya format dan satuan ditulis seragam.<br>3. Data kotor karena salah ketik masih bisa disebut akurat.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 1", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang kotor akibat salah ketik (typo) jelas membuat data tersebut menjadi tidak akurat." },
+
+            // 16-20: 5 SOAL MULTIPLE JAWABAN (Maksimal 3)
+            { type: "multiple", max: 3, question: "Di antara pilihan berikut, manakah yang termasuk ke dalam ciri-ciri Data Berkualitas? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Akurat", correct: true}, {text: "Subjektif", correct: false}, {text: "Relevan", correct: true}, {text: "Anonim", correct: false}, {text: "Terkini", correct: true}], explanation: "Data berkualitas memiliki 5 ciri: Akurat, Lengkap, Konsisten, Relevan, dan Terkini." },
+            { type: "multiple", max: 3, question: "Manakah dari pilihan di bawah ini yang merupakan sumber DATA SEKUNDER bagi seorang siswa? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Laporan BPS", correct: true}, {text: "Wawancara Kades", correct: false}, {text: "Arsip Kelurahan", correct: true}, {text: "Buku Koperasi", correct: true}, {text: "Observasi Kelas", correct: false}], explanation: "Data sekunder adalah data yang sudah tercatat dan dipublikasikan sebelumnya oleh pihak lain, seperti Laporan, Arsip, dan Buku Catatan yang sudah ada." },
+            { type: "multiple", max: 3, question: "Metode atau teknik apa saja yang umum digunakan untuk mengumpulkan data mentah oleh manusia? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Wawancara", correct: true}, {text: "Manipulasi", correct: false}, {text: "Observasi", correct: true}, {text: "Menghapus", correct: false}, {text: "Angket", correct: true}], explanation: "Teknik pengumpulan data yang benar adalah Observasi, Wawancara, Angket, Dokumentasi, dan Pengukuran." },
+            { type: "multiple", max: 3, question: "Manakah kondisi yang menyebabkan sebuah data menjadi 'KOTOR' (tidak valid)? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Ada Kolom Kosong", correct: true}, {text: "Salah Ketik Nama", correct: true}, {text: "Format Seragam", correct: false}, {text: "Data Konsisten", correct: false}, {text: "Nilai Minus (-15kg)", correct: true}], explanation: "Data kotor (tidak valid) terjadi akibat adanya duplikasi, data kosong, salah ketik, format yang tidak seragam, dan nilai yang tidak wajar (seperti minus pada berat ikan)." },
+            { type: "multiple", max: 3, question: "Berdasarkan catatan nelayan, manakah yang termasuk ke dalam Data KUANTITATIF? (PILIH MAKSIMAL 3 JAWABAN)", options: [{text: "Berat 40 Kg", correct: true}, {text: "Cuaca Cerah", correct: false}, {text: "Harga Rp50rb", correct: true}, {text: "Perahu Biru", correct: false}, {text: "150 Ekor Ikan", correct: true}], explanation: "Data kuantitatif adalah data yang direpresentasikan dalam wujud angka dan besaran ukur yang pasti (Berat, Harga, dan Jumlah)." }
         ];
 
         let currentQuestion = 0, score = 0, benar = 0, salah = 0, playerName = "", isAnswering = false, selectedBoxes = [];
@@ -257,8 +267,9 @@
             document.getElementById('screen-feedback').classList.add('hidden');
             
             const q = questions[currentQuestion];
-            document.getElementById('question-text').innerText = q.question;
-            document.getElementById('quiz-progress').innerText = `Soal ${currentQuestion + 1} / 10`;
+            // Render HTML inner agar tag <br> terbaca
+            document.getElementById('question-text').innerHTML = q.question;
+            document.getElementById('quiz-progress').innerText = `Soal ${currentQuestion + 1} / 20`;
             document.getElementById('quiz-score').innerText = `Skor: ${Math.round(score)}`;
             
             const instruksi = document.getElementById('quiz-instruksi');
@@ -280,17 +291,17 @@
                 const butterfly = document.createElement('div');
                 butterfly.className = "butterfly-container interactive";
                 
-                // Menambahkan Ikon Emoji dan Teks Jawaban
                 butterfly.innerHTML = `
                     <div class="butterfly-icon">🦋</div>
                     <div class="butterfly-text">${opt.text}</div>
                 `;
                 
                 butterfly.style.left = `${leftPositions[index]}%`; 
-                butterfly.style.animationDuration = `${Math.random() * 4 + 7}s`; 
-                butterfly.style.animationDelay = `${index * 0.5}s`;
+                // Kupu-kupu dibuat sedikit lebih lambat di soal teks panjang agar sempat dibaca
+                const baseSpeed = q.question.length > 100 ? 10 : 7;
+                butterfly.style.animationDuration = `${Math.random() * 4 + baseSpeed}s`; 
+                butterfly.style.animationDelay = `${index * 0.6}s`;
 
-                // Interaksi klik untuk laptop / Tap untuk layar sentuh HP
                 butterfly.onclick = () => handleBoxClick(butterfly, opt, q);
                 container.appendChild(butterfly);
             });
@@ -341,7 +352,7 @@
             document.getElementById('fb-explanation').innerText = q.explanation;
 
             if (isBenar) {
-                benar++; score += 10; 
+                benar++; score += 5; // Total 20 soal x 5 = 100 poin
                 fbTitle.innerText = "🎉 BENAR!";
                 fbTitle.className = "text-3xl font-extrabold mb-2 text-green-600";
             } else {
@@ -354,7 +365,7 @@
 
         function soalSelanjutnya() {
             currentQuestion++;
-            if (currentQuestion < 10) { tampilkanSoal(); } 
+            if (currentQuestion < 20) { tampilkanSoal(); } 
             else { tampilkanHasil(); }
         }
 
