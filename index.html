@@ -8,7 +8,7 @@
     <!-- Library CSS Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Library Firebase (Wajib untuk Database) -->
+    <!-- Library Firebase (Versi Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
 
@@ -53,7 +53,7 @@
         .hidden { display: none !important; }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(8px); 
+            background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(8px); 
             border: 2px solid rgba(56, 189, 248, 0.8); border-radius: 20px;
             width: 90%; max-width: 650px; padding: 30px; text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3); color: #0f172a;
@@ -61,7 +61,7 @@
 
         #soal-panel {
             position: absolute; top: 2%; width: 95%; max-width: 950px;
-            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
             border-radius: 15px; padding: 15px 25px;
             border-bottom: 5px solid #0ea5e9; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             text-align: center;
@@ -185,22 +185,30 @@
 
     <script>
         // ==========================================
-        // 1. KONFIGURASI FIREBASE ANDA
+        // 1. KONFIGURASI FIREBASE (ANTI-ERROR)
         // ==========================================
-/* SEMENTARA DIMATIKAN
+        let db = null;
         const firebaseConfig = {
-  apiKey: "AIzaSyDQ37yMC1hgk1mBUQYKyl2WjSjrc0G4N9I",
-  authDomain: "rekapan-data-game-ar-fisika.firebaseapp.com",
-  projectId: "rekapan-data-game-ar-fisika",
-  storageBucket: "rekapan-data-game-ar-fisika.firebasestorage.app",
-  messagingSenderId: "680592355939",
-  appId: "1:680592355939:web:2e4e1987837ee0cba83e56",
-  measurementId: "G-CW8Y957EXN"
-};
+            apiKey: "API_KEY_ANDA",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+        try {
+            // Mencegah crash jika API Key belum diisi
+            if (firebaseConfig.apiKey !== "API_KEY_ANDA") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log("Firebase Database Aktif.");
+            } else {
+                console.warn("API Key belum diisi. Game berjalan dalam mode LOKAL tanpa menyimpan data.");
+            }
+        } catch (error) {
+            console.error("Gagal memuat Firebase: ", error);
+        }
 
         // ==========================================
         // 2. LOGIKA KURSOR KUSTOM
@@ -231,7 +239,7 @@ const analytics = getAnalytics(app);
                 if (videoDevices.length > 1) {
                     document.getElementById('btn-switch-cam').classList.remove('hidden');
                 }
-            } catch (err) { console.warn("Kamera error", err); }
+            } catch (err) { console.warn("Kamera ditolak atau tidak ditemukan.", err); }
         }
 
         async function switchCamera() {
@@ -244,7 +252,7 @@ const analytics = getAnalytics(app);
                 const isUserCam = videoDevices[currentDeviceIndex].label.toLowerCase().includes('front');
                 document.getElementById('webcam-bg').style.transform = isUserCam ? "scaleX(-1)" : "none";
                 document.getElementById('webcam-bg').srcObject = currentStream;
-            } catch (err) { console.error("Gagal ganti", err); }
+            } catch (err) { console.error("Gagal ganti kamera", err); }
         }
         initCamera();
 
@@ -299,9 +307,7 @@ const analytics = getAnalytics(app);
             document.getElementById('screen-start').classList.add('hidden');
             document.getElementById('soal-panel').classList.remove('hidden');
             
-            // Acak urutan soal
             acakArray(questions);
-            
             currentQuestion = 0; score = 0; benar = 0; salah = 0;
             tampilkanSoal();
         }
@@ -341,7 +347,6 @@ const analytics = getAnalytics(app);
             container.innerHTML = "";
             const leftPositions = [2, 22, 42, 62, 82]; 
             
-            // Acak urutan pilihan jawaban
             const shuffledOptions = [...q.options];
             acakArray(shuffledOptions);
 
@@ -405,7 +410,7 @@ const analytics = getAnalytics(app);
             document.getElementById('fb-explanation').innerText = q.explanation;
 
             if (isBenar) {
-                benar++; score += 5; // 20 soal x 5 = 100 poin
+                benar++; score += 5;
                 fbTitle.innerText = "🎉 BENAR!";
                 fbTitle.className = "text-3xl font-extrabold mb-2 text-green-600";
             } else {
@@ -441,29 +446,32 @@ const analytics = getAnalytics(app);
             // ==========================================
             // 7. SIMPAN DATA KE FIREBASE
             // ==========================================
-            const btnUlang = document.getElementById('btn-ulang-game');
-            const teksAsli = "MAIN LAGI";
-            btnUlang.innerText = "MENYIMPAN KE DATABASE...";
-            btnUlang.disabled = true;
+            if (db) {
+                const btnUlang = document.getElementById('btn-ulang-game');
+                const teksAsli = "MAIN LAGI";
+                btnUlang.innerText = "MENYIMPAN KE DATABASE...";
+                btnUlang.disabled = true;
 
-            // Simpan ke collection bernama "rekap_nilai_ar"
-            db.collection("rekap_nilai_ar").add({
-                nama_siswa: playerName,
-                jumlah_benar: benar,
-                jumlah_salah: salah,
-                nilai_akhir: finalScore,
-                waktu_pengerjaan: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then((docRef) => {
-                console.log("Data berhasil tersimpan dengan ID: ", docRef.id);
-                btnUlang.innerText = teksAsli;
-                btnUlang.disabled = false;
-            })
-            .catch((error) => {
-                console.error("Gagal menyimpan data ke Firebase: ", error);
-                btnUlang.innerText = "GAGAL SIMPAN. MAIN LAGI?";
-                btnUlang.disabled = false;
-            });
+                db.collection("rekap_nilai_ar").add({
+                    nama_siswa: playerName,
+                    jumlah_benar: benar,
+                    jumlah_salah: salah,
+                    nilai_akhir: finalScore,
+                    waktu_pengerjaan: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then((docRef) => {
+                    console.log("Data berhasil tersimpan di DB.");
+                    btnUlang.innerText = teksAsli;
+                    btnUlang.disabled = false;
+                })
+                .catch((error) => {
+                    console.error("Gagal menyimpan data: ", error);
+                    btnUlang.innerText = "GAGAL SIMPAN. MAIN LAGI?";
+                    btnUlang.disabled = false;
+                });
+            } else {
+                console.log("Sistem berjalan pada Mode Lokal. Data tidak disimpan.");
+            }
         }
     </script>
 </body>
