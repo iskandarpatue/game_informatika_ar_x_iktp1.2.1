@@ -4,20 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kuis AR: Tangkap Kupu-Kupu Data</title>
+    
+    <!-- Library CSS Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Library Firebase (Wajib untuk Database) -->
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
         
         body { font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; background-color: #111; }
         
         /* Layar besar (Laptop/PID): Kursor hilang diganti hologram */
-        @media (min-width: 768px) {
-            body, .interactive { cursor: none; }
-        }
+        @media (min-width: 768px) { body, .interactive { cursor: none; } }
         /* Layar kecil (HP): Kursor default untuk sentuhan alami */
-        @media (max-width: 767px) {
-            #custom-cursor { display: none !important; }
-        }
+        @media (max-width: 767px) { #custom-cursor { display: none !important; } }
 
         /* Kursor Hologram */
         #custom-cursor {
@@ -70,6 +73,7 @@
             border: 2px solid #0284c7; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         .btn:active { transform: scale(0.95); }
+        .btn:disabled { background: #94a3b8; border-color: #64748b; cursor: not-allowed; }
         .btn-secondary { background: #64748b; border-color: #475569; margin-top: 10px; }
 
         #falling-container {
@@ -173,12 +177,32 @@
                 <p class="text-sky-800 font-bold text-sm">NILAI AKHIR</p>
                 <p id="result-nilai" class="text-5xl font-extrabold text-sky-600">100</p>
             </div>
-            <button class="btn interactive" onclick="ulangGame()">MAIN LAGI</button>
+            
+            <!-- Tombol ini teksnya akan berubah dinamis saat menyimpan ke DB -->
+            <button id="btn-ulang-game" class="btn interactive" onclick="ulangGame()">MAIN LAGI</button>
         </div>
     </div>
 
     <script>
-        // === LOGIKA KURSOR KUSTOM ===
+        // ==========================================
+        // 1. KONFIGURASI FIREBASE ANDA
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "API_KEY_ANDA",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ==========================================
+        // 2. LOGIKA KURSOR KUSTOM
+        // ==========================================
         if (window.innerWidth >= 768) {
             const customCursor = document.getElementById('custom-cursor');
             document.addEventListener('mousemove', (e) => {
@@ -189,7 +213,9 @@
             document.addEventListener('mouseup', () => customCursor.classList.remove('cursor-click'));
         }
 
-        // === SISTEM KAMERA ===
+        // ==========================================
+        // 3. SISTEM KAMERA
+        // ==========================================
         let videoDevices = [];
         let currentDeviceIndex = 0;
         let currentStream = null;
@@ -220,7 +246,9 @@
         }
         initCamera();
 
-        // === FUNGSI ACAK SOAL (Fisher-Yates Shuffle) ===
+        // ==========================================
+        // 4. FUNGSI PENGACAK SOAL (Fisher-Yates)
+        // ==========================================
         function acakArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -228,9 +256,11 @@
             }
         }
 
-        // === DATABASE SOAL (20 SOAL TOTAL) ===
+        // ==========================================
+        // 5. DATABASE SOAL (20 SOAL TOTAL)
+        // ==========================================
         const questions = [
-            // 1-10: SOAL AWAL (Reguler IKTP 1.2.1)
+            // 1-10: SOAL REGULER
             { type: "single", question: "Ciri data berkualitas yang mensyaratkan data harus sesuai dengan keadaan sebenarnya, tanpa salah catat adalah...", options: [{text: "Konsisten", correct: false}, {text: "Lengkap", correct: false}, {text: "Akurat", correct: true}, {text: "Terkini", correct: false}, {text: "Relevan", correct: false}], explanation: "Akurat berarti data yang dicatat benar-benar mencerminkan fakta di lapangan." },
             { type: "single", question: "Data nama, jenis ikan, berat, dan harga harus terisi semua tanpa ada kolom yang kosong. Hal ini memenuhi ciri data yang...", options: [{text: "Lengkap", correct: true}, {text: "Akurat", correct: false}, {text: "Relevan", correct: false}, {text: "Konsisten", correct: false}, {text: "Terkini", correct: false}], explanation: "Data yang lengkap berarti semua bagian data atau atribut penting telah terisi seluruhnya." },
             { type: "single", question: "Format penulisan, satuan, dan istilah yang seragam di seluruh data (misal semua tanggal ditulis hh/bb/tttt) mencerminkan ciri data...", options: [{text: "Terkini", correct: false}, {text: "Konsisten", correct: true}, {text: "Akurat", correct: false}, {text: "Relevan", correct: false}, {text: "Lengkap", correct: false}], explanation: "Konsistensi memastikan seluruh data mengikuti aturan atau format baku yang sama." },
@@ -242,14 +272,14 @@
             { type: "single", question: "Membagikan formulir daring (online) untuk mengetahui tingkat kepuasan wisatawan merupakan teknik...", options: [{text: "Wawancara", correct: false}, {text: "Observasi", correct: false}, {text: "Pengukuran", correct: false}, {text: "Angket", correct: true}, {text: "Dokumentasi", correct: false}], explanation: "Angket (Kuesioner) memungkinkan pengumpulan pendapat tertulis dari responden dalam jumlah besar." },
             { type: "multiple", max: 2, question: "Berdasarkan jenisnya, data dibagi menjadi Kuantitatif (angka) dan Kualitatif (kategori). Manakah contoh data Kualitatif? (PILIH 2)", options: [{text: "Jenis Ikan", correct: true}, {text: "Berat 40kg", correct: false}, {text: "Harga Rp30rb", correct: false}, {text: "Kesan Pantai", correct: true}, {text: "Suhu 32°C", correct: false}], explanation: "Data kualitatif berupa kategori, uraian, atau pendapat (misal jenis ikan tongkol, kesan pantai bersih)." },
 
-            // 11-15: 5 SOAL BENAR-SALAH DENGAN 3 PERNYATAAN 
+            // 11-15: SOAL BENAR-SALAH (Kombinasi Pernyataan)
             { type: "single", question: "Cermati 3 pernyataan ini:<br>1. Data lengkap artinya tidak ada kolom kosong.<br>2. Data akurat harus selalu angka.<br>3. Data terkini berarti belum usang.<br><br>Manakah pernyataan yang BENAR?", options: [{text: "1 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "2 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 2 SALAH karena data akurat tidak harus berupa angka (bisa juga kualitatif yang sesuai fakta)." },
             { type: "single", question: "Perhatikan 3 pernyataan SUMBER DATA:<br>1. Wawancara nelayan menghasilkan data primer.<br>2. Laporan desa adalah data sekunder.<br>3. Data primer didapat dari tulisan orang lain.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 3", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang didapat dari tulisan/penelitian orang lain disebut data sekunder." },
             { type: "single", question: "Evaluasi 3 pernyataan TEKNIK PENGUMPULAN ini:<br>1. Angket cocok mengukur suhu air laut.<br>2. Observasi dilakukan dengan mengamati langsung.<br>3. Menimbang ikan termasuk pengukuran.<br><br>Manakah yang BENAR?", options: [{text: "2 dan 3", correct: true}, {text: "1 dan 2", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 1 SALAH karena suhu air laut harus menggunakan teknik PENGUKURAN (termometer), bukan angket." },
             { type: "single", question: "Cermati 3 pernyataan JENIS DATA berikut:<br>1. 'Harga Rp30.000' = data kuantitatif.<br>2. 'Pantai kotor' = data kualitatif.<br>3. Data kualitatif selalu dapat dihitung kalkulator.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "2 dan 3", correct: false}, {text: "1 dan 3", correct: false}, {text: "Semua Benar", correct: false}, {text: "Semua Salah", correct: false}], explanation: "Pernyataan 3 SALAH karena data kualitatif (seperti pendapat) tidak dapat dihitung matematis dengan kalkulator." },
             { type: "single", question: "Perhatikan 3 pernyataan KUALITAS DATA ini:<br>1. Relevan = data sesuai tujuan awal.<br>2. Konsisten = format ditulis seragam.<br>3. Data salah ketik masih bisa disebut akurat.<br><br>Mana yang BENAR?", options: [{text: "1 dan 2", correct: true}, {text: "1 dan 3", correct: false}, {text: "2 dan 3", correct: false}, {text: "Hanya 1", correct: false}, {text: "Semua Benar", correct: false}], explanation: "Pernyataan 3 SALAH karena data yang kotor akibat salah ketik (typo) jelas menjadi tidak akurat." },
 
-            // 16-20: 5 SOAL MULTIPLE JAWABAN (Maksimal 3)
+            // 16-20: SOAL MULTIPLE JAWABAN (Maksimal 3)
             { type: "multiple", max: 3, question: "Di antara pilihan berikut, manakah yang termasuk ke dalam ciri-ciri Data Berkualitas? (PILIH MAKSIMAL 3)", options: [{text: "Akurat", correct: true}, {text: "Subjektif", correct: false}, {text: "Relevan", correct: true}, {text: "Anonim", correct: false}, {text: "Terkini", correct: true}], explanation: "Data berkualitas memiliki 5 ciri: Akurat, Lengkap, Konsisten, Relevan, dan Terkini." },
             { type: "multiple", max: 3, question: "Manakah dari pilihan di bawah ini yang merupakan sumber DATA SEKUNDER bagi seorang siswa? (PILIH MAKSIMAL 3)", options: [{text: "Laporan BPS", correct: true}, {text: "Wawancara Kades", correct: false}, {text: "Arsip Desa", correct: true}, {text: "Buku Koperasi", correct: true}, {text: "Observasi Kelas", correct: false}], explanation: "Data sekunder adalah data yang sudah tercatat dan dipublikasikan sebelumnya, seperti Laporan, Arsip, dan Buku Catatan." },
             { type: "multiple", max: 3, question: "Metode atau teknik apa saja yang umum digunakan untuk mengumpulkan data mentah? (PILIH MAKSIMAL 3)", options: [{text: "Wawancara", correct: true}, {text: "Manipulasi", correct: false}, {text: "Observasi", correct: true}, {text: "Menghapus", correct: false}, {text: "Angket", correct: true}], explanation: "Teknik pengumpulan data yang benar adalah Observasi, Wawancara, Angket, Dokumentasi, dan Pengukuran." },
@@ -259,25 +289,26 @@
 
         let currentQuestion = 0, score = 0, benar = 0, salah = 0, playerName = "", isAnswering = false, selectedBoxes = [];
 
+        // ==========================================
+        // 6. LOGIKA PERMAINAN
+        // ==========================================
         function mulaiGame() {
             playerName = document.getElementById('input-nama').value || "Siswa";
             document.getElementById('screen-start').classList.add('hidden');
             document.getElementById('soal-panel').classList.remove('hidden');
             
-            // ACAK URUTAN SOAL SEBELUM MULAI
+            // Acak urutan soal
             acakArray(questions);
             
             currentQuestion = 0; score = 0; benar = 0; salah = 0;
             tampilkanSoal();
         }
 
-        // FUNGSI UNTUK MERESET GAME TANPA RELOAD PAGE
         function ulangGame() {
             document.getElementById('screen-result').classList.add('hidden');
             document.getElementById('screen-start').classList.remove('hidden');
-            document.getElementById('input-nama').value = ""; // Kosongkan nama
+            document.getElementById('input-nama').value = ""; 
             
-            // Tampilkan kembali kursor hologram di layar awal
             if (window.innerWidth >= 768) {
                 const cursor = document.getElementById('custom-cursor');
                 if(cursor) cursor.style.display = 'block';
@@ -306,21 +337,16 @@
 
             const container = document.getElementById('falling-container');
             container.innerHTML = "";
-            
             const leftPositions = [2, 22, 42, 62, 82]; 
             
-            // ACAK POSISI JAWABAN (KUPU-KUPU) SETIAP KALI MUNCUL
+            // Acak urutan pilihan jawaban
             const shuffledOptions = [...q.options];
             acakArray(shuffledOptions);
 
             shuffledOptions.forEach((opt, index) => {
                 const butterfly = document.createElement('div');
                 butterfly.className = "butterfly-container interactive";
-                
-                butterfly.innerHTML = `
-                    <div class="butterfly-icon">🦋</div>
-                    <div class="butterfly-text">${opt.text}</div>
-                `;
+                butterfly.innerHTML = `<div class="butterfly-icon">🦋</div><div class="butterfly-text">${opt.text}</div>`;
                 
                 butterfly.style.left = `${leftPositions[index]}%`; 
                 const baseSpeed = q.question.length > 100 ? 10 : 7;
@@ -377,7 +403,7 @@
             document.getElementById('fb-explanation').innerText = q.explanation;
 
             if (isBenar) {
-                benar++; score += 5; // Total 20 soal x 5 = 100 poin
+                benar++; score += 5; // 20 soal x 5 = 100 poin
                 fbTitle.innerText = "🎉 BENAR!";
                 fbTitle.className = "text-3xl font-extrabold mb-2 text-green-600";
             } else {
@@ -409,6 +435,33 @@
             
             const cursor = document.getElementById('custom-cursor');
             if(cursor) cursor.style.display = 'none';
+
+            // ==========================================
+            // 7. SIMPAN DATA KE FIREBASE
+            // ==========================================
+            const btnUlang = document.getElementById('btn-ulang-game');
+            const teksAsli = "MAIN LAGI";
+            btnUlang.innerText = "MENYIMPAN KE DATABASE...";
+            btnUlang.disabled = true;
+
+            // Simpan ke collection bernama "rekap_nilai_ar"
+            db.collection("rekap_nilai_ar").add({
+                nama_siswa: playerName,
+                jumlah_benar: benar,
+                jumlah_salah: salah,
+                nilai_akhir: finalScore,
+                waktu_pengerjaan: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then((docRef) => {
+                console.log("Data berhasil tersimpan dengan ID: ", docRef.id);
+                btnUlang.innerText = teksAsli;
+                btnUlang.disabled = false;
+            })
+            .catch((error) => {
+                console.error("Gagal menyimpan data ke Firebase: ", error);
+                btnUlang.innerText = "GAGAL SIMPAN. MAIN LAGI?";
+                btnUlang.disabled = false;
+            });
         }
     </script>
 </body>
